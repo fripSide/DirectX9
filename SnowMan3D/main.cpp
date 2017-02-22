@@ -1,269 +1,196 @@
-// SnowMan3D.cpp : Defines the entry point for the application.
-//
-#include "resource.h"
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-// Windows Header Files:
+// include the basic windows header files and the Direct3D header file
 #include <windows.h>
+#include <windowsx.h>
+//#include <d3d9.h>
 
-// C RunTime Header Files
-#include <stdlib.h>
-#include <malloc.h>
-#include <memory.h>
-#include <tchar.h>
+
+//#include "SnowMan3D.h"
 
 #include "directx_common.h"
-#include "SnowMan3D.h"
 
-void renderFrame();
-void initialDirectX(HWND hWnd);
-void cleanDirect3D();
+// define the screen resolution
+//#define SCREEN_WIDTH 800
+//#define SCREEN_HEIGHT 600
 
-// directX 3d
-LPDIRECT3D9 d3d; // the pointer to our Direct3D interface
-LPDIRECT3DDEVICE9 d3ddev;
+// include the Direct3D Library file
+#pragma comment (lib, "d3d9.lib")
 
-//struct CUSTOMVERTEX { FLOAT X, Y, Z; D3DVECTOR NORMAL; };
-//
-//#define CUSTOMFVF (D3DFVF_XYZ | D3DFVF_NORMAL)
+// global declarations
+LPDIRECT3D9 d3d;    // the pointer to our Direct3D interface
+LPDIRECT3DDEVICE9 d3ddev;    // the pointer to the device class
+LPDIRECT3DVERTEXBUFFER9 v_buffer = NULL;    // the pointer to the vertex buffer
 
+											// function prototypes
+void initD3D(HWND hWnd);    // sets up and initializes Direct3D
+void render_frame(void);    // renders a single frame
+void cleanD3D(void);    // closes Direct3D and releases memory
+void init_graphics(void);    // 3D declarations
 
-#define MAX_LOADSTRING 100
+//struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; DWORD COLOR; };
+//#define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
 
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+// the WindowProc function prototype
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 
-
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+// the entry point for any Windows program
+int WINAPI WinMain(HINSTANCE hInstance,
+	HINSTANCE hPrevInstance,
+	LPSTR lpCmdLine,
+	int nCmdShow)
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+	HWND hWnd;
+	WNDCLASSEX wc;
 
-    // TODO: Place code here.
+	ZeroMemory(&wc, sizeof(WNDCLASSEX));
 
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_SNOWMAN3D, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+	wc.cbSize = sizeof(WNDCLASSEX);
+	wc.style = CS_HREDRAW | CS_VREDRAW;
+	wc.lpfnWndProc = WindowProc;
+	wc.hInstance = hInstance;
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.lpszClassName = L"WindowClass";
 
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
+	RegisterClassEx(&wc);
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SNOWMAN3D));
+	hWnd = CreateWindowEx(NULL,
+		L"WindowClass",
+		L"Our Direct3D Program",
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, 0,
+		CW_USEDEFAULT, 0,
+		NULL,
+		NULL,
+		hInstance,
+		NULL);
 
-    MSG msg;
-	
+	ShowWindow(hWnd, nCmdShow);
 
-    // Main message loop:
-	// should not use GetMesage , http://www.directxtutorial.com/Lesson.aspx?lessonid=9-1-4
-	while (true) {
-		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+	// set up and initialize Direct3D
+	initD3D(hWnd);
+
+	// enter the main loop:
+
+	MSG msg;
+
+	while (TRUE)
+	{
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
 
 		if (msg.message == WM_QUIT)
 			break;
-		
-		renderFrame();
+
+		render_frame();
 	}
 
-	cleanDirect3D();
+	// clean up DirectX and COM
+	cleanD3D();
 
-    return (int) msg.wParam;
+	return msg.wParam;
 }
 
 
-void initialDirectX(HWND hWnd) {
+// this is the main message handler for the program
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+	case WM_DESTROY:
+	{
+		PostQuitMessage(0);
+		return 0;
+	} break;
+	}
+
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+
+// this function initializes and prepares Direct3D for use
+void initD3D(HWND hWnd)
+{
 	d3d = Direct3DCreate9(D3D_SDK_VERSION);
-	D3DPRESENT_PARAMETERS d3dpp; // create a struct to hold various device information
-	D3DDISPLAYMODE displayMode;
 
-	d3d->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &displayMode);
+	D3DPRESENT_PARAMETERS d3dpp;
 
-	ZeroMemory(&d3dpp, sizeof(d3dpp)); // clear out the struct for use
-	d3dpp.Windowed = TRUE; // program windowed, not fullscreen
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD; // discard old frames
-	d3dpp.hDeviceWindow = hWnd; // set the window to be used by Direct3D
-	d3dpp.BackBufferFormat = displayMode.Format;
+	ZeroMemory(&d3dpp, sizeof(d3dpp));
+	d3dpp.Windowed = TRUE;
+	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+	d3dpp.hDeviceWindow = hWnd;
+	d3dpp.BackBufferFormat = D3DFMT_X8R8G8B8;
+	d3dpp.BackBufferWidth = SCREEN_WIDTH;
+	d3dpp.BackBufferHeight = SCREEN_HEIGHT;
 
-									// create a device class using this information and information from the d3dpp stuct
+	// create a device class using this information and the info from the d3dpp stuct
 	d3d->CreateDevice(D3DADAPTER_DEFAULT,
 		D3DDEVTYPE_HAL,
 		hWnd,
 		D3DCREATE_SOFTWARE_VERTEXPROCESSING,
 		&d3dpp,
 		&d3ddev);
-	
-	SnowMan3D::instance().init(d3ddev);
+
+	init_graphics();    // call the function to initialize the triangle
 }
 
 
-void renderFrame() {
-
+// this is the function used to render a single frame
+void render_frame(void)
+{
 	d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
-	// Begin our scene
 	d3ddev->BeginScene();
 
-	// Do our rendering to our backbuffer here
+	// select which vertex format we are using
 	d3ddev->SetFVF(CUSTOMFVF);
 
-	D3DXMATRIX matView;
+	// select the vertex buffer to display
+	d3ddev->SetStreamSource(0, v_buffer, 0, sizeof(CUSTOMVERTEX));
 
-	D3DXMatrixLookAtLH(&matView, &D3DXVECTOR3(123.0f, 8.0f, 25.0f), &D3DXVECTOR3(0.7f, 0.9f, 0.6f), &D3DXVECTOR3(0.0f, 1.0f, 0.0f));
+	// copy the vertex buffer to the back buffer
+	d3ddev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
 
-	SnowMan3D::instance().render();
-
-	// End our scene
 	d3ddev->EndScene();
 
-	// Display our scene
 	d3ddev->Present(NULL, NULL, NULL, NULL);
 }
 
-void cleanDirect3D() {
-	d3ddev->Release();
-	d3ddev = NULL;
 
-	d3d->Release();
-	d3d = NULL;
+// this is the function that cleans up Direct3D and COM
+void cleanD3D(void)
+{
+	v_buffer->Release();    // close and release the vertex buffer
+	d3ddev->Release();    // close and release the 3D device
+	d3d->Release();    // close and release Direct3D
 }
 
 
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
+// this is the function that puts the 3D models into video RAM
+void init_graphics(void)
 {
-    WNDCLASSEXW wcex;
+	// create the vertices using the CUSTOMVERTEX struct
+	CUSTOMVERTEX vertices[] =
+	{
+		{ 400.0f, 62.5f, 0.5f, 1.0f, D3DCOLOR_XRGB(0, 0, 255), },
+		{ 650.0f, 500.0f, 0.5f, 1.0f, D3DCOLOR_XRGB(0, 255, 0), },
+		{ 150.0f, 500.0f, 0.5f, 1.0f, D3DCOLOR_XRGB(255, 0, 0), },
+	};
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+	// create a vertex buffer interface called v_buffer
+	d3ddev->CreateVertexBuffer(3 * sizeof(CUSTOMVERTEX),
+		0,
+		CUSTOMFVF,
+		D3DPOOL_MANAGED,
+		&v_buffer,
+		NULL);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SNOWMAN3D));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_SNOWMAN3D);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	VOID* pVoid;    // a void pointer
 
-    return RegisterClassExW(&wcex);
-}
-
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   hInst = hInstance; // Store instance handle in our global variable
-
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-   initialDirectX(hWnd);
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   
-   return TRUE;
-}
-
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch (message)
-    {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
+					// lock v_buffer and load the vertices into it
+	v_buffer->Lock(0, 0, (void**)&pVoid, 0);
+	memcpy(pVoid, vertices, sizeof(vertices));
+	v_buffer->Unlock();
 }

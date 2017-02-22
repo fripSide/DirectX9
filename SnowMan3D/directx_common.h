@@ -11,5 +11,13 @@
 #include <d3d9.h>
 #include <d3dx9math.h>
 
+
+
 struct CUSTOMVERTEX { FLOAT X, Y, Z, RHW; D3DCOLOR color; };
-#define CUSTOMFVF (D3DFVF_XYZ | D3DFVF_NORMAL)
+#define CUSTOMFVF (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
+
+
+
+// define the screen resolution
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
