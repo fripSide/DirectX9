@@ -147,11 +147,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Scenes.h" />
+    <ClInclude Include="SnowMan.h" />
     <ClInclude Include="SnowMan3D.h" />
     <ClInclude Include="directx_common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main2.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Scenes.cpp" />
+    <ClCompile Include="SnowMan.cpp" />
     <ClCompile Include="SnowMan3D.cpp" />
   </ItemGroup>
   <ItemGroup>

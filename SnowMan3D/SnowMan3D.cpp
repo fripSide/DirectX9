@@ -1,10 +1,25 @@
-#include "SnowMan3D.h"
+﻿#include "SnowMan3D.h"
+#include <time.h>
+#include <tchar.h>
 
 SnowMan3D* SnowMan3D::_instance = NULL;
+const DWORD Vertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 
 
-void SnowMan3D::initD3D(HWND hWnd) {
+D3DMATERIAL9 d3d::InitMtrl(D3DXCOLOR a, D3DXCOLOR d, D3DXCOLOR s, D3DXCOLOR e, float p) {
+	D3DMATERIAL9 mtrl;
+	mtrl.Ambient = a;
+	mtrl.Diffuse = d;
+	mtrl.Specular = s;
+	mtrl.Emissive = e;
+	mtrl.Power = p;
+	return mtrl;
+}
+
+void SnowMan3D::InitD3D(HWND hWnd) {
 	_d3d = Direct3DCreate9(D3D_SDK_VERSION);
+	_hwnd = hWnd;
+
 
 	D3DPRESENT_PARAMETERS d3dpp;
 
@@ -16,7 +31,7 @@ void SnowMan3D::initD3D(HWND hWnd) {
 	d3dpp.BackBufferWidth = SCREEN_WIDTH;
 	d3dpp.BackBufferHeight = SCREEN_HEIGHT;
 
-	// create a device class using this information and the info from the d3dpp stuct
+
 	_d3d->CreateDevice(D3DADAPTER_DEFAULT,
 		D3DDEVTYPE_HAL,
 		hWnd,
@@ -24,58 +39,173 @@ void SnowMan3D::initD3D(HWND hWnd) {
 		&d3dpp,
 		&_d3ddev);
 
-	initBuffers();    // call the function to initialize the triangle
+	if (!initScenes()) { // call the function to initialize the all the objects in the scenes
+		MessageBox(_hwnd, _T("Init Scenes failed"), _T(""), NULL);
+	} 
+
+
+	D3DXMATRIX proj;
+	D3DXMatrixPerspectiveFovLH(
+		&proj,
+		D3DX_PI * 0.25f, // 45 - degree
+		(float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+		1.0f,
+		1000.0f);
+	_d3ddev->SetTransform(D3DTS_PROJECTION, &proj);
+
+	//_d3ddev->SetRenderState(D3DRS_LIGHTING, FALSE);   //关闭光照  
+	//_d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);   //开启背面消隐  
+	//_d3ddev->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);  //设置线框填充模式  
+
 }
 
-void SnowMan3D::render() {
+void SnowMan3D::Render() { 
+	//计算每帧时间
+	float currTime = (float) ::timeGetTime();
+	float timeDelta = (currTime - _lastTime) * 0.001f;
+
 	_d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
+	setCameraView(timeDelta);
 	_d3ddev->BeginScene();
 
-	// select which vertex format we are using
-	_d3ddev->SetFVF(CUSTOMFVF);
-
-	// select the vertex buffer to display
-	_d3ddev->SetStreamSource(0, _snowManBuf, 0, sizeof(CUSTOMVERTEX));
-
-	// copy the vertex buffer to the back buffer
-	_d3ddev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
+	// 画场景和雪人
+	// 先画场景加载光照
+	D3DXMATRIX v;
+	//D3DXMatrixIdentity(&v);
+	D3DXMatrixTranslation(&v, 0.f, 0.f, 0.f);
+	scene->Render(&v);
+	sman->Render(NULL);
 
 	_d3ddev->EndScene();
-
 	_d3ddev->Present(NULL, NULL, NULL, NULL);
+
+	_lastTime = currTime;
 }
 
 
-void SnowMan3D::cleanD3D() {
-	_snowManBuf->Release();    // close and release the vertex buffer
-	_d3ddev->Release();    // close and release the 3D device
-	_d3d->Release();    // close and release Direct3D
+void SnowMan3D::CleanD3D() {
+	sman->Clean();
+	delete sman;
+	scene->Clean();
+	delete scene;
 	delete _instance;
 	_instance = NULL;
 }
 
-void SnowMan3D::initBuffers() {
-	// create the vertices using the CUSTOMVERTEX struct
-	CUSTOMVERTEX vertices[] =
-	{
-		{ 400.0f, 62.5f, 0.5f, 1.0f, D3DCOLOR_XRGB(0, 0, 255), },
-		{ 650.0f, 500.0f, 0.5f, 1.0f, D3DCOLOR_XRGB(0, 255, 0), },
-		{ 150.0f, 500.0f, 0.5f, 1.0f, D3DCOLOR_XRGB(255, 0, 0), },
-	};
+bool SnowMan3D::initScenes() {
+	sman = new SnowMan(_d3ddev);
+	sman->Init();
+	scene = new Scenes(_d3ddev);
+	scene->Init();
+	return true;
+}
 
-	// create a vertex buffer interface called v_buffer
-	_d3ddev->CreateVertexBuffer(3 * sizeof(CUSTOMVERTEX),
-		0,
-		CUSTOMFVF,
-		D3DPOOL_MANAGED,
-		&_snowManBuf,
-		NULL);
+void SnowMan3D::setCameraView(float timeDelta) {
 
-	VOID* pVoid;    // a void pointer
+	if (::GetAsyncKeyState('W') & 0x8000f)
+		walk(4.0f * timeDelta);
 
-					// lock v_buffer and load the vertices into it
-	_snowManBuf->Lock(0, 0, (void**)&pVoid, 0);
-	memcpy(pVoid, vertices, sizeof(vertices));
-	_snowManBuf->Unlock();
+	if (::GetAsyncKeyState('S') & 0x8000f)
+		walk(-4.0f * timeDelta);
+
+	if (::GetAsyncKeyState('A') & 0x8000f)
+		strafe(-4.0f * timeDelta);
+
+	if (::GetAsyncKeyState('D') & 0x8000f)
+		strafe(4.0f * timeDelta);
+
+	if (::GetAsyncKeyState('R') & 0x8000f)
+		fly(4.0f * timeDelta);
+
+	if (::GetAsyncKeyState('F') & 0x8000f)
+		fly(-4.0f * timeDelta);
+
+	if (::GetAsyncKeyState(VK_UP) & 0x8000f)
+		pitch(1.0f * timeDelta);
+
+	if (::GetAsyncKeyState(VK_DOWN) & 0x8000f)
+		pitch(-1.0f * timeDelta);
+
+	if (::GetAsyncKeyState(VK_LEFT) & 0x8000f)
+		yaw(-1.0f * timeDelta);
+
+	if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
+		yaw(1.0f * timeDelta);
+
+	D3DXMATRIX V;
+	//D3DXMatrixLookAtLH(&V, &_pos, &_look, &_up);
+	getViewMatrix(&V);
+	_d3ddev->SetTransform(D3DTS_VIEW, &V);
+}
+
+void SnowMan3D::strafe(float units) {
+	_pos += D3DXVECTOR3(_right.x, 0.f, _right.z) * units;
+}
+
+void SnowMan3D::walk(float units) {
+	_pos += D3DXVECTOR3(_look.x, 0.f, _look.z) * units;
+}
+
+void SnowMan3D::fly(float units) {
+	_pos.y += units;
+	if (_pos.y < 0.f) _pos.y = 0.f;
+}
+
+void SnowMan3D::pitch(float angle) {
+	D3DXMATRIX T;
+	D3DXMatrixRotationAxis(&T, &_right, angle);
+
+	// rotate _up and _look around _right vector
+	D3DXVec3TransformCoord(&_up, &_up, &T);
+	D3DXVec3TransformCoord(&_look, &_look, &T);
+}
+
+void SnowMan3D::yaw(float angle) {
+	D3DXMATRIX T;
+	D3DXMatrixRotationY(&T, angle);
+
+	// rotate _right and _look around _up or y-axis
+	D3DXVec3TransformCoord(&_right, &_right, &T);
+	D3DXVec3TransformCoord(&_look, &_look, &T);
+}
+
+void SnowMan3D::getViewMatrix(D3DXMATRIX *V) {
+	D3DXVec3Normalize(&_look, &_look);
+
+	D3DXVec3Cross(&_up, &_look, &_right);
+	D3DXVec3Normalize(&_up, &_up);
+
+	D3DXVec3Cross(&_right, &_up, &_look);
+	D3DXVec3Normalize(&_right, &_right);
+
+	// Build the view matrix:
+	float x = -D3DXVec3Dot(&_right, &_pos);
+	float y = -D3DXVec3Dot(&_up, &_pos);
+	float z = -D3DXVec3Dot(&_look, &_pos);
+
+	(*V)(0, 0) = _right.x; (*V)(0, 1) = _up.x; (*V)(0, 2) = _look.x; (*V)(0, 3) = 0.0f;
+	(*V)(1, 0) = _right.y; (*V)(1, 1) = _up.y; (*V)(1, 2) = _look.y; (*V)(1, 3) = 0.0f;
+	(*V)(2, 0) = _right.z; (*V)(2, 1) = _up.z; (*V)(2, 2) = _look.z; (*V)(2, 3) = 0.0f;
+	(*V)(3, 0) = x;        (*V)(3, 1) = y;     (*V)(3, 2) = z;       (*V)(3, 3) = 1.0f;
+}
+
+float SnowMan3D::getFPS() {
+
+	static float  fps = 0; //我们需要计算的FPS值  
+	static int    frameCount = 0;//帧数  
+	static float  currentTime = 0.0f;//当前时间  
+	static float  lastTime = clock() * 0.001f;  
+
+	frameCount++;  
+	currentTime = clock() * 0.001f;//获取系统时间，其中timeGetTime函数返回的是以毫秒为单位的系统时间
+	//每秒计算一次帧数  
+	if (currentTime - lastTime > 1.0f) {
+		fps = (float)frameCount / (currentTime - lastTime);//计算这1秒钟的FPS值  
+		lastTime = currentTime;   
+		frameCount = 0;  
+	}
+
+	return fps;
+
 }

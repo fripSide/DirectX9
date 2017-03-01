@@ -1,10 +1,13 @@
 ﻿#pragma once
 #include "directx_common.h"
 #include <cstdio>
+#include "SnowMan.h"
+#include "Scenes.h"
 
 /***
-1. 封装基本的初始化
-2. 完全封装DirectX init
+1. 封装DirectX基本的初始化
+2. 完全封装object init和render
+3. 封装相机
 */
 class SnowMan3D {
 
@@ -16,22 +19,42 @@ public:
 		return _instance;
 	}
 
-	void initD3D(HWND hWnd);
-	void render();
-	void cleanD3D();
+	void InitD3D(HWND hWnd);
+	void Render();
+	void CleanD3D();
 
 private:
 	SnowMan3D() {};
 	SnowMan3D(SnowMan3D const &);
-	SnowMan3D& operator=(SnowMan3D const &);
+	SnowMan3D& operator = (const SnowMan3D &);
 
+	float getFPS();
+	bool initScenes();
 
-	void initBuffers();
+	// 相机视角控制
+	void setCameraView(float timeDelta);
+	void strafe(float units); // left/right
+	void fly(float units);    // up/down
+	void walk(float units);   // forward/backward
+	void pitch(float angle); // rotate on right vector
+	void yaw(float angle);   // rotate on up vector
+	//void roll(float angle);  // rotate on look vector
+	void getViewMatrix(D3DXMATRIX *v);
 
 private:
 	static SnowMan3D *_instance;
-	LPDIRECT3D9 _d3d;
-	LPDIRECT3DDEVICE9 _d3ddev;
-	LPDIRECT3DVERTEXBUFFER9 _snowManBuf;
-	
+	HWND _hwnd = NULL;
+	LPDIRECT3D9 _d3d = NULL;
+	LPDIRECT3DDEVICE9 _d3ddev = NULL;
+
+	float _lastTime = 0.f; // 上一帧的时间
+	D3DXVECTOR3 _right = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
+	D3DXVECTOR3 _up = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
+	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
+	D3DXVECTOR3 _pos = D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+
+	// 场景部件
+	ID3DXFont *_fontFPS = NULL;
+	SnowMan *sman = NULL;
+	Scenes *scene = NULL;
 };

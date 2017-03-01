@@ -27,6 +27,12 @@
     <ClInclude Include="directx_common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SnowMan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scenes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SnowMan3D.rc">
@@ -43,9 +49,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SnowMan3D.cpp">
-      <Filter>Header Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main2.cpp">
+    <ClCompile Include="SnowMan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scenes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
