@@ -5,7 +5,9 @@
 SnowMan3D* SnowMan3D::_instance = NULL;
 const DWORD Vertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 
-
+//========================================================
+// directx_common
+//
 D3DMATERIAL9 d3d::InitMtrl(D3DXCOLOR a, D3DXCOLOR d, D3DXCOLOR s, D3DXCOLOR e, float p) {
 	D3DMATERIAL9 mtrl;
 	mtrl.Ambient = a;
@@ -16,6 +18,59 @@ D3DMATERIAL9 d3d::InitMtrl(D3DXCOLOR a, D3DXCOLOR d, D3DXCOLOR s, D3DXCOLOR e, f
 	return mtrl;
 }
 
+d3d::BoundingBox::BoundingBox()
+{
+	// infinite small 
+	_min.x = d3d::INFINITY_FLT;
+	_min.y = d3d::INFINITY_FLT;
+	_min.z = d3d::INFINITY_FLT;
+
+	_max.x = -d3d::INFINITY_FLT;
+	_max.y = -d3d::INFINITY_FLT;
+	_max.z = -d3d::INFINITY_FLT;
+}
+
+bool d3d::BoundingBox::isPointInside(D3DXVECTOR3& p)
+{
+	if (p.x >= _min.x && p.y >= _min.y && p.z >= _min.z &&
+		p.x <= _max.x && p.y <= _max.y && p.z <= _max.z)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+float d3d::GetRandomFloat(float lowBound, float highBound) {
+	if (lowBound >= highBound) // bad input
+		return lowBound;
+
+	// get random float in [0, 1] interval
+	float f = (rand() % 10000) * 0.0001f;
+
+	// return float in [lowBound, highBound] interval. 
+	return (f * (highBound - lowBound)) + lowBound;
+}
+
+DWORD d3d::FtoDw(float f) {
+	return *((DWORD*)&f);
+}
+
+void d3d::GetRandomVector(
+	D3DXVECTOR3* out,
+	D3DXVECTOR3* min,
+	D3DXVECTOR3* max)
+{
+	out->x = GetRandomFloat(min->x, max->x);
+	out->y = GetRandomFloat(min->y, max->y);
+	out->z = GetRandomFloat(min->z, max->z);
+}
+
+//========================================================
+//
+//
 void SnowMan3D::InitD3D(HWND hWnd) {
 	_d3d = Direct3DCreate9(D3D_SDK_VERSION);
 	_hwnd = hWnd;
@@ -89,10 +144,17 @@ void SnowMan3D::Render() {
 	// 设置相机
 	setCameraView(timeDelta);
 
+	snow->update(timeDelta);
+
 	_d3ddev->BeginScene();
+
+	D3DXMATRIX I;
+	D3DXMatrixIdentity(&I);
+	_d3ddev->SetTransform(D3DTS_WORLD, &I);
 
 	// 加载光照
 	initLights();
+
 
 	// 画场景和雪人
 	D3DXMATRIX v1, v2;
@@ -119,6 +181,10 @@ void SnowMan3D::Render() {
 	// 雪人2 到了雪人1 的背面
 	
 	
+	// 下雪
+	_d3ddev->SetTransform(D3DTS_WORLD, &I);
+	snow->render();
+
 	_d3ddev->EndScene();
 	_d3ddev->Present(NULL, NULL, NULL, NULL);
 
@@ -132,6 +198,8 @@ void SnowMan3D::CleanD3D() {
 	scene->Clean();
 	delete scene;
 	d3d::Release<LPD3DXMESH>(_box);
+	d3d::Delete<PSystem*>(snow);
+
 
 	delete _instance;
 	_instance = NULL;
@@ -142,7 +210,11 @@ bool SnowMan3D::initScenes() {
 	sman->Init();
 	scene = new Scenes(_d3ddev);
 	scene->Init();
-
+	d3d::BoundingBox boundingBox;
+	boundingBox._min = D3DXVECTOR3(-10.0f, -10.0f, -10.0f);
+	boundingBox._max = D3DXVECTOR3(10.0f, 10.0f, 10.0f);
+	snow = new Snow(&boundingBox, 3000);
+	snow->init(_d3ddev, L"res/snowflake.dds");
 	// 箱子
 	D3DXCreateBox(_d3ddev, 2.f, 2.f, 2.f, &_box, NULL);
 

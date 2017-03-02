@@ -73,4 +73,33 @@ namespace d3d {
 	const D3DMATERIAL9 GREEN_MTRL = InitMtrl(GREEN, GREEN, GREEN, BLACK, 2.0f);
 	const D3DMATERIAL9 BLUE_MTRL = InitMtrl(BLUE, BLUE, BLUE, BLACK, 2.0f);
 	const D3DMATERIAL9 YELLOW_MTRL = InitMtrl(YELLOW, YELLOW, YELLOW, BLACK, 2.0f);
+
+	const float INFINITY_FLT = FLT_MAX;
+	const float EPSILON = 0.001f;
+
+
+	struct BoundingBox {
+		BoundingBox();
+
+		bool isPointInside(D3DXVECTOR3& p);
+
+		D3DXVECTOR3 _min;
+		D3DXVECTOR3 _max;
+	};
+	//
+	// Randomness
+	//
+
+	// Desc: Return random float in [lowBound, highBound] interval.
+	float GetRandomFloat(float lowBound, float highBound);
+
+
+	// Desc: Returns a random vector in the bounds specified by min and max.
+	void GetRandomVector(
+		D3DXVECTOR3* out,
+		D3DXVECTOR3* min,
+		D3DXVECTOR3* max);
+
+	DWORD FtoDw(float f);
+
 }

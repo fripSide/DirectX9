@@ -146,24 +146,22 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Resource.h" />
-    <ClInclude Include="Scenes.h" />
-    <ClInclude Include="SnowMan.h" />
-    <ClInclude Include="SnowMan3D.h" />
-    <ClInclude Include="directx_common.h" />
+    <ClInclude Include="src\SnowParticle.h" />
+    <ClInclude Include="src\Scenes.h" />
+    <ClInclude Include="src\SnowMan.h" />
+    <ClInclude Include="src\SnowMan3D.h" />
+    <ClInclude Include="src\directx_common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Scenes.cpp" />
-    <ClCompile Include="SnowMan.cpp" />
-    <ClCompile Include="SnowMan3D.cpp" />
+    <ClCompile Include="src\SnowParticle.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Scenes.cpp" />
+    <ClCompile Include="src\SnowMan.cpp" />
+    <ClCompile Include="src\SnowMan3D.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="SnowMan3D.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="small.ico" />
-    <Image Include="SnowMan3D.ico" />
+    <Image Include="res\small.ico" />
+    <Image Include="res\SnowMan3D.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

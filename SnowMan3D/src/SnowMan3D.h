@@ -3,6 +3,7 @@
 #include <cstdio>
 #include "SnowMan.h"
 #include "Scenes.h"
+#include "SnowParticle.h"
 
 /***
 1. 封装DirectX基本的初始化
@@ -52,11 +53,12 @@ private:
 	D3DXVECTOR3 _right = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
 	D3DXVECTOR3 _up = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
 	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
-	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 0.f, -3.f);
+	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 0.f, -8.f);
 
 	// 场景部件
 	ID3DXFont *_fontFPS = NULL;
 	SnowMan *sman = NULL;
 	LPD3DXMESH _box = NULL;
 	Scenes *scene = NULL;
+	Snow *snow = NULL;
 };
