@@ -23,9 +23,7 @@ public:
 	void Clean();
 
 private:
-	void initLights();
-
-	void renderTerrain();
+	void initTerrain();
 
 	void initSkyBox();
 	void renderSkyBox(D3DXMATRIX *world);
@@ -40,7 +38,7 @@ private:
 
 
 	// sky box
-	float _skyLength = 2000.f;
+	float _skyLength = 20000.f;
 	LPDIRECT3DVERTEXBUFFER9 _skyBuffer;
 	LPDIRECT3DINDEXBUFFER9 _skyIndices;
 	LPDIRECT3DTEXTURE9 _skyTexs[5];

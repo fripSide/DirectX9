@@ -50,13 +50,33 @@ void SnowMan3D::InitD3D(HWND hWnd) {
 		D3DX_PI * 0.25f, // 45 - degree
 		(float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
 		1.0f,
-		1000.0f);
+		300000.0f);
 	_d3ddev->SetTransform(D3DTS_PROJECTION, &proj);
 
 	//_d3ddev->SetRenderState(D3DRS_LIGHTING, FALSE);   //关闭光照  
 	//_d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);   //开启背面消隐  
 	//_d3ddev->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);  //设置线框填充模式  
 
+	D3DXMATRIX mv;
+	D3DXMatrixLookAtLH(&mv, &_pos, &_look, &_up);
+	_d3ddev->SetTransform(D3DTS_VIEW, &mv);
+}
+
+void SnowMan3D::initLights() {
+	D3DXVECTOR3 dir(0.707f, -0.707f, 0.707f);
+	D3DXCOLOR col(1.0f, 1.0f, 1.0f, 1.0f);
+	D3DLIGHT9 light;
+	::ZeroMemory(&light, sizeof(light));
+
+	light.Type = D3DLIGHT_DIRECTIONAL;
+	light.Ambient = col * 0.4f;
+	light.Diffuse = col;
+	light.Specular = col * 0.6f;
+	light.Direction = dir;
+	_d3ddev->SetLight(0, &light);
+	_d3ddev->LightEnable(0, true);
+	_d3ddev->SetRenderState(D3DRS_NORMALIZENORMALS, true);
+	_d3ddev->SetRenderState(D3DRS_SPECULARENABLE, true);  //镜面反射
 }
 
 void SnowMan3D::Render() { 
@@ -69,14 +89,24 @@ void SnowMan3D::Render() {
 	setCameraView(timeDelta);
 	_d3ddev->BeginScene();
 
-	// 画场景和雪人
-	// 先画场景加载光照
-	D3DXMATRIX v;
-	//D3DXMatrixIdentity(&v);
-	D3DXMatrixTranslation(&v, 0.f, 0.f, 0.f);
-	scene->Render(&v);
-	sman->Render(NULL);
+	// 加载光照
+	initLights();
 
+	// 画场景和雪人
+	D3DXMATRIX v;
+	D3DXMatrixTranslation(&v, 0.f, -2.5f, 0.f);
+	scene->Render(&v);
+
+	D3DXMatrixTranslation(&v, 0.f, -2.5f, 0.f);
+	smanCenter->Render(&v);
+
+	D3DXMATRIX sa, Ry;
+	D3DXMatrixTranslation(&sa, 0.f, -2.5f, 1.5f);
+	float y = ::timeGetTime() / 1000.f;
+	// 绕Y轴旋转
+	D3DXMatrixRotationY(&Ry, y);
+	sa = sa * Ry;
+	smanArround->Render(&sa);
 	_d3ddev->EndScene();
 	_d3ddev->Present(NULL, NULL, NULL, NULL);
 
@@ -85,8 +115,10 @@ void SnowMan3D::Render() {
 
 
 void SnowMan3D::CleanD3D() {
-	sman->Clean();
-	delete sman;
+	smanCenter->Clean();
+	delete smanCenter;
+	smanArround->Clean();
+	delete smanArround;
 	scene->Clean();
 	delete scene;
 	delete _instance;
@@ -94,8 +126,10 @@ void SnowMan3D::CleanD3D() {
 }
 
 bool SnowMan3D::initScenes() {
-	sman = new SnowMan(_d3ddev);
-	sman->Init();
+	smanCenter = new SnowMan(_d3ddev);
+	smanCenter->Init();
+	smanArround = new SnowMan(_d3ddev);
+	smanArround->Init();
 	scene = new Scenes(_d3ddev);
 	scene->Init();
 	return true;
