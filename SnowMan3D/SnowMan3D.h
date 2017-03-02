@@ -51,12 +51,12 @@ private:
 	float _lastTime = 0.f; // 上一帧的时间
 	D3DXVECTOR3 _right = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
 	D3DXVECTOR3 _up = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, -1.0f, 1.0f);
-	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 5.0f, -10.0f);
+	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
+	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 0.f, -3.f);
 
 	// 场景部件
 	ID3DXFont *_fontFPS = NULL;
-	SnowMan *smanCenter = NULL;
-	SnowMan *smanArround = NULL;
+	SnowMan *sman = NULL;
+	LPD3DXMESH _box = NULL;
 	Scenes *scene = NULL;
 };

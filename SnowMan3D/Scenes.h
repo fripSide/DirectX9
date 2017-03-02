@@ -4,9 +4,8 @@
 
 /*
 1. 加载地形 Terrain
-2. 加载天空盒 SkyBox
-3. 光照效果 
-4. 粒子效果
+2. 加载天空盒 SkyBox 
+3. 下雪粒子效果
 */
 
 struct SKYBOXVERTEX {

@@ -23,7 +23,7 @@ void Scenes::Render(D3DXMATRIX *world) {
 	D3DXMatrixIdentity(&T);
 	T = S * T;
 	_d3ddev->SetTransform(D3DTS_WORLD, &T);
-	//_d3ddev->SetMaterial(&d3d::WHITE_MTRL);
+	_d3ddev->SetMaterial(&d3d::WHITE_MTRL);
 	_d3ddev->SetTexture(0, _tex);
 	_d3ddev->SetStreamSource(0, _floor, 0, sizeof(Vertex));
 	_d3ddev->SetFVF(Vertex::FVF);
@@ -50,13 +50,15 @@ void Scenes::initTerrain() {
 	Vertex *v;
 	_floor->Lock(0, 0, (void**)&v, 0);
 
-	v[0] = Vertex(-2000.0f, -2.5f, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-	v[1] = Vertex(-2000.0f, -2.5f, 2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	v[2] = Vertex(2000.0f, -2.5f, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+	float y = -2.0f;
 
-	v[3] = Vertex(-2000.0f, -2.5f, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-	v[4] = Vertex(2000.0f, -2.5f, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-	v[5] = Vertex(2000.0f, -2.5f, -2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
+	v[0] = Vertex(-2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+	v[1] = Vertex(-2000.0f, y, 2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	v[2] = Vertex(2000.0f,  y, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+
+	v[3] = Vertex(-2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+	v[4] = Vertex(2000.0f, y, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+	v[5] = Vertex(2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
 
 	_floor->Unlock();
 

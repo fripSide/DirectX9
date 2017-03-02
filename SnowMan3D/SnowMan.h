@@ -13,4 +13,5 @@ private:
 	LPDIRECT3DDEVICE9 _d3ddev;
 	LPD3DXMESH _head;
 	LPD3DXMESH _body;
+	LPD3DXMESH _cap;
 };

@@ -86,27 +86,39 @@ void SnowMan3D::Render() {
 
 	_d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
+	// 设置相机
 	setCameraView(timeDelta);
+
 	_d3ddev->BeginScene();
 
 	// 加载光照
 	initLights();
 
 	// 画场景和雪人
-	D3DXMATRIX v;
-	D3DXMatrixTranslation(&v, 0.f, -2.5f, 0.f);
-	scene->Render(&v);
+	D3DXMATRIX v1, v2;
+	D3DXMatrixTranslation(&v1, 0.f, -2.5f, 0.f);
+	scene->Render(&v1);
 
-	D3DXMatrixTranslation(&v, 0.f, -2.5f, 0.f);
-	smanCenter->Render(&v);
+	D3DXMatrixTranslation(&v1, 0.f, -2.0f, 0.f);
+	sman->Render(&v1); // 雪人1 
 
-	D3DXMATRIX sa, Ry;
-	D3DXMatrixTranslation(&sa, 0.f, -2.5f, 1.5f);
+	D3DXMATRIX P, Ry;
+	
 	float y = ::timeGetTime() / 1000.f;
 	// 绕Y轴旋转
 	D3DXMatrixRotationY(&Ry, y);
-	sa = sa * Ry;
-	smanArround->Render(&sa);
+	D3DXMatrixTranslation(&v2, 0.f, -3.3f, 5.f);
+	P = v2 * Ry;
+	_d3ddev->SetTransform(D3DTS_WORLD, &P);
+	_d3ddev->SetMaterial(&d3d::BLUE_MTRL);
+	_box->DrawSubset(0);
+	D3DXMatrixTranslation(&v2, 0.f, -1.0f, 5.f);
+	P = v2 * Ry;
+	sman->Render(&P); // 雪人2
+
+	// 雪人2 到了雪人1 的背面
+	
+	
 	_d3ddev->EndScene();
 	_d3ddev->Present(NULL, NULL, NULL, NULL);
 
@@ -115,23 +127,25 @@ void SnowMan3D::Render() {
 
 
 void SnowMan3D::CleanD3D() {
-	smanCenter->Clean();
-	delete smanCenter;
-	smanArround->Clean();
-	delete smanArround;
+	sman->Clean();
+	delete sman;
 	scene->Clean();
 	delete scene;
+	d3d::Release<LPD3DXMESH>(_box);
+
 	delete _instance;
 	_instance = NULL;
 }
 
 bool SnowMan3D::initScenes() {
-	smanCenter = new SnowMan(_d3ddev);
-	smanCenter->Init();
-	smanArround = new SnowMan(_d3ddev);
-	smanArround->Init();
+	sman = new SnowMan(_d3ddev);
+	sman->Init();
 	scene = new Scenes(_d3ddev);
 	scene->Init();
+
+	// 箱子
+	D3DXCreateBox(_d3ddev, 2.f, 2.f, 2.f, &_box, NULL);
+
 	return true;
 }
 
@@ -166,6 +180,13 @@ void SnowMan3D::setCameraView(float timeDelta) {
 
 	if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
 		yaw(1.0f * timeDelta);
+
+	if (GetAsyncKeyState(VK_SPACE) & 0x8000f) {
+		// 按空格键复位到最初的位置
+		_pos = D3DXVECTOR3(0.f, 0.f, -10.f);
+		_look = D3DXVECTOR3(0.f, 0.f, 1.f);
+		_up = D3DXVECTOR3(0.f, 1.f, 0.f);
+	}
 
 	D3DXMATRIX V;
 	//D3DXMatrixLookAtLH(&V, &_pos, &_look, &_up);
