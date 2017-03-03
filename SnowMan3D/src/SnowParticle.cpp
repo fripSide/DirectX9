@@ -51,6 +51,7 @@ bool PSystem::init(IDirect3DDevice9* device, wchar_t* texFileName) {
 }
 
 void PSystem::reset() {
+	_initHeight = 10.f;
 	std::list<Attribute>::iterator i;
 	for (i = _particles.begin(); i != _particles.end(); i++) {
 		resetParticle(&(*i));
@@ -62,6 +63,7 @@ void PSystem::addParticle()
 	Attribute attribute;
 
 	resetParticle(&attribute);
+	attribute._position.y = 5.f;
 
 	_particles.push_back(attribute);
 }
@@ -285,7 +287,11 @@ void Snow::resetParticle(Attribute* attribute)
 
 	// no randomness for height (y-coordinate).  Snow flake
 	// always starts at the top of bounding box.
-	attribute->_position.y = _boundingBox._max.y;
+	_initHeight += 0.1f;
+	if (_initHeight > _boundingBox._max.y)
+		_initHeight = _boundingBox._max.y;
+
+	attribute->_position.y = _initHeight;
 
 	// snow flakes fall downwards and slightly to the left
 	attribute->_velocity.x = d3d::GetRandomFloat(0.0f, 1.0f) * -3.0f;
@@ -304,8 +310,7 @@ void Snow::update(float timeDelta)
 		i->_position += i->_velocity * timeDelta;
 
 		// is the point outside bounds?
-		if (_boundingBox.isPointInside(i->_position) == false)
-		{
+		if (_boundingBox.isPointInside(i->_position) == false) {
 			// nope so kill it, but we want to recycle dead 
 			// particles, so respawn it instead.
 			resetParticle(&(*i));

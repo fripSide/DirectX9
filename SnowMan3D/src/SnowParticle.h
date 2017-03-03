@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "directx_common.h"
 #include <list>
@@ -62,13 +62,15 @@ protected:
 	std::list<Attribute>    _particles;
 	int                     _maxParticles; // max allowed particles system can have
 
-										   //
-										   // Following three data elements used for rendering the p-system efficiently
-										   //
-
+	//
+	// Following three data elements used for rendering the p-system efficiently
+	//
 	DWORD _vbSize;      // size of vb
 	DWORD _vbOffset;    // offset in vb to lock   
 	DWORD _vbBatchSize; // number of vertices to lock starting at _vbOffset
+
+	// 雪花从10 高度处初始化, 之后分层初始化
+	float _initHeight = 5.f;
 };
 
 class Snow : public PSystem {

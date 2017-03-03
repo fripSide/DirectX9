@@ -2,8 +2,10 @@
 #include "directx_common.h"
 #include <cstdio>
 #include "SnowMan.h"
-#include "Scenes.h"
+#include "SkyBox.h"
 #include "SnowParticle.h"
+#include "SnowTerrian.h"
+#include "DirectxInput.h"
 
 /***
 1. 封装DirectX基本的初始化
@@ -20,7 +22,7 @@ public:
 		return _instance;
 	}
 
-	void InitD3D(HWND hWnd);
+	void InitD3D(HWND hWnd, HINSTANCE hInstance);
 	void Render();
 	void CleanD3D();
 
@@ -34,7 +36,7 @@ private:
 	void initLights();
 
 	// 相机视角控制
-	void setCameraView(float timeDelta);
+	void handlerUserInput(float timeDelta);
 	void strafe(float units); // left/right
 	void fly(float units);    // up/down
 	void walk(float units);   // forward/backward
@@ -52,13 +54,20 @@ private:
 	float _lastTime = 0.f; // 上一帧的时间
 	D3DXVECTOR3 _right = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
 	D3DXVECTOR3 _up = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
-	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 0.f, -8.f);
+	D3DXVECTOR3 _look = D3DXVECTOR3(0.0f, 0.f, 1.0f);
+	D3DXVECTOR3 _pos = D3DXVECTOR3(0.f, 0.f, -20.f);
+	bool _first = true; // 初始化相机位置
+	POINT lastMousePosition; // 鼠标位置
+	DirectxInput *_dxInput;
+
+	LPD3DXFONT _pTextFPS = NULL; // FPS
+	wchar_t _strFPS[50];
 
 	// 场景部件
 	ID3DXFont *_fontFPS = NULL;
 	SnowMan *sman = NULL;
 	LPD3DXMESH _box = NULL;
-	Scenes *scene = NULL;
+	SkyBox *skyBox = NULL;
 	Snow *snow = NULL;
+	SnowTerrian *snowTerrian = NULL;
 };

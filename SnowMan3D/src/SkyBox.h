@@ -5,7 +5,6 @@
 /*
 1. 加载地形 Terrain
 2. 加载天空盒 SkyBox 
-3. 下雪粒子效果
 */
 
 struct SKYBOXVERTEX {
@@ -14,27 +13,15 @@ struct SKYBOXVERTEX {
 };
 const DWORD SKYBOXFVF = D3DFVF_XYZ | D3DFVF_TEX1;
 
-class Scenes {
+class SkyBox {
 public:
-	Scenes(LPDIRECT3DDEVICE9 d3ddev);
+	SkyBox(LPDIRECT3DDEVICE9 d3ddev);
 	void Init();
 	void Render(D3DXMATRIX *world);
 	void Clean();
 
 private:
-	void initTerrain();
-
-	void initSkyBox();
-	void renderSkyBox(D3DXMATRIX *world);
-	void cleanSkyBox();
-
-
 	LPDIRECT3DDEVICE9 _d3ddev;
-	LPDIRECT3DVERTEXBUFFER9 _floor = NULL;
-	LPDIRECT3DTEXTURE9 _tex = NULL;
-
-	// terrain
-
 
 	// sky box
 	float _skyLength = 20000.f;

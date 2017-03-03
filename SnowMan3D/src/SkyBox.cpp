@@ -1,73 +1,10 @@
-﻿#include "Scenes.h"
+﻿#include "SkyBox.h"
 
-Scenes::Scenes(LPDIRECT3DDEVICE9 d3ddev) {
+SkyBox::SkyBox(LPDIRECT3DDEVICE9 d3ddev) {
 	_d3ddev = d3ddev;
 }
 
-void Scenes::Init() {
-	initTerrain();
-	initSkyBox();
-}
-
-
-void Scenes::Render(D3DXMATRIX *world) {
-	_d3ddev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-	_d3ddev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-	_d3ddev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_POINT);
-
-	D3DXMATRIX T, R, P, S;
-	float scale = 1.f;
-	D3DXMatrixScaling(&S, scale, scale, scale);
-
-	// draw floor
-	D3DXMatrixIdentity(&T);
-	T = S * T;
-	_d3ddev->SetTransform(D3DTS_WORLD, &T);
-	_d3ddev->SetMaterial(&d3d::WHITE_MTRL);
-	_d3ddev->SetTexture(0, _tex);
-	_d3ddev->SetStreamSource(0, _floor, 0, sizeof(Vertex));
-	_d3ddev->SetFVF(Vertex::FVF);
-	_d3ddev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 2);
-
-	renderSkyBox(world);
-}
-
-void Scenes::Clean() {
-	d3d::Release<IDirect3DVertexBuffer9*>(_floor);
-	d3d::Release<IDirect3DTexture9*>(_tex);
-
-	cleanSkyBox();
-}
-
-void Scenes::initTerrain() {
-	_d3ddev->CreateVertexBuffer(6 * sizeof(Vertex),
-		NULL,
-		Vertex::FVF,
-		D3DPOOL_MANAGED,
-		&_floor,
-		NULL);
-
-	Vertex *v;
-	_floor->Lock(0, 0, (void**)&v, 0);
-
-	float y = -2.0f;
-
-	v[0] = Vertex(-2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-	v[1] = Vertex(-2000.0f, y, 2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	v[2] = Vertex(2000.0f,  y, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-
-	v[3] = Vertex(-2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-	v[4] = Vertex(2000.0f, y, 2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-	v[5] = Vertex(2000.0f, y, -2000.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
-
-	_floor->Unlock();
-
-	D3DXCreateTextureFromFile(_d3ddev, L"res/snowland.bmp",
-		&_tex);
-}
-
-
-void Scenes::initSkyBox() {
+void SkyBox::Init() {
 	_d3ddev->CreateVertexBuffer(20 * sizeof(SKYBOXVERTEX),
 		NULL,
 		SKYBOXFVF,
@@ -155,12 +92,12 @@ void Scenes::initSkyBox() {
 	D3DXCreateTextureFromFile(_d3ddev, L"res/skytop.jpg", &_skyTexs[4]);
 }
 
-void Scenes::renderSkyBox(D3DXMATRIX *world) {
+void SkyBox::Render(D3DXMATRIX *world) {
 	_d3ddev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
 	_d3ddev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
 	D3DXMATRIX t, v, s;
-	float scale = 200.f;
+	float scale = 1.f;
 	D3DXMatrixTranslation(&v, 0.0f, -3500.0f, 0.f);
 	D3DXMatrixScaling(&s, scale, scale, scale);
 	D3DXMatrixIdentity(&t);
@@ -177,7 +114,7 @@ void Scenes::renderSkyBox(D3DXMATRIX *world) {
 	} 
 }
 
-void Scenes::cleanSkyBox() {
+void SkyBox::Clean() {
 	d3d::Release<LPDIRECT3DVERTEXBUFFER9>(_skyBuffer);
 	d3d::Release<LPDIRECT3DINDEXBUFFER9>(_skyIndices);
 	for (int i = 0; i < 5; i++) {

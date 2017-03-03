@@ -1,6 +1,7 @@
 ﻿#include "SnowMan3D.h"
 #include <time.h>
 #include <tchar.h>
+#include <cstdio>
 
 SnowMan3D* SnowMan3D::_instance = NULL;
 const DWORD Vertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
@@ -8,6 +9,14 @@ const DWORD Vertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 //========================================================
 // directx_common
 //
+void d3d::log(const char * fmt, ...) {
+	FILE *fp = fopen("log.txt", "w");
+	va_list args;
+	va_start(args, fmt);
+	fprintf(fp, fmt, args);
+	va_end(args);
+}
+
 D3DMATERIAL9 d3d::InitMtrl(D3DXCOLOR a, D3DXCOLOR d, D3DXCOLOR s, D3DXCOLOR e, float p) {
 	D3DMATERIAL9 mtrl;
 	mtrl.Ambient = a;
@@ -61,20 +70,25 @@ DWORD d3d::FtoDw(float f) {
 void d3d::GetRandomVector(
 	D3DXVECTOR3* out,
 	D3DXVECTOR3* min,
-	D3DXVECTOR3* max)
-{
+	D3DXVECTOR3* max) {
 	out->x = GetRandomFloat(min->x, max->x);
 	out->y = GetRandomFloat(min->y, max->y);
 	out->z = GetRandomFloat(min->z, max->z);
 }
 
+float d3d::Lerp(float a, float b, float t) {
+	return a - (a*t) + (b*t);
+}
+
 //========================================================
 //
 //
-void SnowMan3D::InitD3D(HWND hWnd) {
+void SnowMan3D::InitD3D(HWND hWnd, HINSTANCE hInstance) {
 	_d3d = Direct3DCreate9(D3D_SDK_VERSION);
 	_hwnd = hWnd;
 
+	_dxInput = new DirectxInput();
+	_dxInput->Init(hWnd, hInstance, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 
 	D3DPRESENT_PARAMETERS d3dpp;
 
@@ -112,9 +126,6 @@ void SnowMan3D::InitD3D(HWND hWnd) {
 	//_d3ddev->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);   //开启背面消隐  
 	//_d3ddev->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);  //设置线框填充模式  
 
-	D3DXMATRIX mv;
-	D3DXMatrixLookAtLH(&mv, &_pos, &_look, &_up);
-	_d3ddev->SetTransform(D3DTS_VIEW, &mv);
 }
 
 void SnowMan3D::initLights() {
@@ -139,51 +150,96 @@ void SnowMan3D::Render() {
 	float currTime = (float) ::timeGetTime();
 	float timeDelta = (currTime - _lastTime) * 0.001f;
 
-	_d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	// 设置相机
-	setCameraView(timeDelta);
-
+	handlerUserInput(timeDelta);
+	// 更新雪花位置
 	snow->update(timeDelta);
 
+	// 开始绘制
+	_d3ddev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 	_d3ddev->BeginScene();
 
-	D3DXMATRIX I;
-	D3DXMatrixIdentity(&I);
-	_d3ddev->SetTransform(D3DTS_WORLD, &I);
+	D3DXMATRIX V, I, T, P, Ry;
+	// 设置相机
+	getViewMatrix(&V);
+	_d3ddev->SetTransform(D3DTS_VIEW, &V);
 
 	// 加载光照
 	initLights();
 
+	// 绘制地形
+	float _floor = -2.5f; //地平线
+	D3DXMatrixTranslation(&T, 0.f, _floor, 0.f);
+	snowTerrian->draw(&T, false);
 
-	// 画场景和雪人
-	D3DXMATRIX v1, v2;
-	D3DXMatrixTranslation(&v1, 0.f, -2.5f, 0.f);
-	scene->Render(&v1);
+	// 移动天空盒
+	skyBox->Render(&T);
 
-	D3DXMatrixTranslation(&v1, 0.f, -2.0f, 0.f);
-	sman->Render(&v1); // 雪人1 
-
-	D3DXMATRIX P, Ry;
-	
+	// 画雪人
+	D3DXMATRIX v1, v2, v3;
+	D3DXMatrixTranslation(&v1, 0.f, _floor, 0.f); // 雪人1 位置
+	// 雪人2绕Y轴旋转
 	float y = ::timeGetTime() / 1000.f;
-	// 绕Y轴旋转
 	D3DXMatrixRotationY(&Ry, y);
-	D3DXMatrixTranslation(&v2, 0.f, -3.3f, 5.f);
-	P = v2 * Ry;
-	_d3ddev->SetTransform(D3DTS_WORLD, &P);
-	_d3ddev->SetMaterial(&d3d::BLUE_MTRL);
-	_box->DrawSubset(0);
 	D3DXMatrixTranslation(&v2, 0.f, -1.0f, 5.f);
-	P = v2 * Ry;
-	sman->Render(&P); // 雪人2
+	D3DXMatrixTranslation(&v3, 0.f, -3.3f, 5.f);
+	v2 = v2 * Ry, v3 = v3 * Ry;
 
-	// 雪人2 到了雪人1 的背面
-	
-	
+	// 判断雪人2 是否到了雪人1 的背面
+	bool behind = false;
+	D3DXVECTOR3 PP, S1, S2;
+	S1 = S2 = { 0.f, 0.f, 0.f };
+	//D3DXVec3TransformCoord(&PP, &PP, &v1);
+	D3DXVec3TransformCoord(&S1, &S1, &v1);
+	D3DXVec3TransformCoord(&S2, &S2, &v2);
+	float PAx = S1.x - _pos.x, PAz = S1.z - _pos.z;
+	float ABx = S2.x - S1.x, ABz = S2.z - S1.z;
+	float val = PAx * ABx + PAz * ABz; //cos < 0, 雪人2到了背后， 
+	behind = val > 0;
+
+	d3d::log("S2: x=%f z=%f", S2.x, S2.z);
+	//D3DXMatrixTranslation(&v2, S2.x, S2.y, S2.z);
+
+	if (!behind) {
+		// 雪人1
+		sman->Render(&v1);
+
+		// 画箱子
+		_d3ddev->SetTransform(D3DTS_WORLD, &v3);
+		_d3ddev->SetTexture(NULL, NULL);
+		_d3ddev->SetMaterial(&d3d::DESERT_SAND_MTRL);
+		_box->DrawSubset(0);
+
+		// 雪人2
+		sman->Render(&v2);
+	} else { // 转到了背面
+
+		// 画箱子
+		_d3ddev->SetTransform(D3DTS_WORLD, &v3);
+		_d3ddev->SetTexture(NULL, NULL);
+		_d3ddev->SetMaterial(&d3d::DESERT_SAND_MTRL);
+		_box->DrawSubset(0);
+
+		// 雪人2
+		sman->Render(&v2);
+
+		// 雪人1
+		sman->Render(&v1);
+	}
+
 	// 下雪
+	D3DXMatrixIdentity(&I);
 	_d3ddev->SetTransform(D3DTS_WORLD, &I);
 	snow->render();
+
+
+	//显示帧数
+	RECT formatRect;
+	GetClientRect(_hwnd, &formatRect);
+
+	//在窗口右上角处，显示每秒帧数  
+	formatRect.top = 5;
+	int charCount = swprintf_s(_strFPS, 20, _T("FPS:%0.3f"), getFPS());
+	_pTextFPS->DrawText(NULL, _strFPS, charCount, &formatRect, DT_TOP | DT_LEFT, D3DCOLOR_RGBA(0, 239, 136, 255));
 
 	_d3ddev->EndScene();
 	_d3ddev->Present(NULL, NULL, NULL, NULL);
@@ -195,11 +251,13 @@ void SnowMan3D::Render() {
 void SnowMan3D::CleanD3D() {
 	sman->Clean();
 	delete sman;
-	scene->Clean();
-	delete scene;
+	skyBox->Clean();
+	delete skyBox;
 	d3d::Release<LPD3DXMESH>(_box);
 	d3d::Delete<PSystem*>(snow);
-
+	d3d::Delete<SnowTerrian*>(snowTerrian);
+	d3d::Delete<DirectxInput*>(_dxInput);
+	d3d::Release<LPD3DXFONT>(_pTextFPS);
 
 	delete _instance;
 	_instance = NULL;
@@ -208,25 +266,39 @@ void SnowMan3D::CleanD3D() {
 bool SnowMan3D::initScenes() {
 	sman = new SnowMan(_d3ddev);
 	sman->Init();
-	scene = new Scenes(_d3ddev);
-	scene->Init();
+	skyBox = new SkyBox(_d3ddev);
+	skyBox->Init();
+
+	// 初始化雪花
 	d3d::BoundingBox boundingBox;
-	boundingBox._min = D3DXVECTOR3(-10.0f, -10.0f, -10.0f);
-	boundingBox._max = D3DXVECTOR3(10.0f, 10.0f, 10.0f);
-	snow = new Snow(&boundingBox, 3000);
+	boundingBox._min = D3DXVECTOR3(-100.0f, -3.0f, -100.0f);
+	boundingBox._max = D3DXVECTOR3(100.0f, 22.0f, 100.0f);
+	snow = new Snow(&boundingBox, 5000);
 	snow->init(_d3ddev, L"res/snowflake.dds");
+
+	// 地形
+	snowTerrian = new SnowTerrian(_d3ddev, "res/castlehm257.raw", 64, 64, 100, -3.5f);
+	D3DXVECTOR3 lightDirection(0.f, 1.f, 0.f);
+	//snowTerrian->genTexture(&lightDirection);
+	snowTerrian->loadTexture(L"res/snowland.bmp");
+	
 	// 箱子
 	D3DXCreateBox(_d3ddev, 2.f, 2.f, 2.f, &_box, NULL);
+
+	// FPS
+	D3DXCreateFont(_d3ddev, 36, 0, 0, 1000, false, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, 0, _T("Calibri"), &_pTextFPS);
 
 	return true;
 }
 
-void SnowMan3D::setCameraView(float timeDelta) {
+void SnowMan3D::handlerUserInput(float timeDelta) {
+	_dxInput->GetInput();
 
-	if (::GetAsyncKeyState('W') & 0x8000f)
+	if (_dxInput->IsKeyDown(DIK_W))
 		walk(4.0f * timeDelta);
 
-	if (::GetAsyncKeyState('S') & 0x8000f)
+	if (_dxInput->IsKeyDown(DIK_S))
 		walk(-4.0f * timeDelta);
 
 	if (::GetAsyncKeyState('A') & 0x8000f)
@@ -253,17 +325,26 @@ void SnowMan3D::setCameraView(float timeDelta) {
 	if (::GetAsyncKeyState(VK_RIGHT) & 0x8000f)
 		yaw(1.0f * timeDelta);
 
-	if (GetAsyncKeyState(VK_SPACE) & 0x8000f) {
+	if (GetAsyncKeyState(VK_SPACE) & 0x8000f || _first) {
 		// 按空格键复位到最初的位置
-		_pos = D3DXVECTOR3(0.f, 0.f, -10.f);
+		_right = D3DXVECTOR3(1.f, 0.f, 0.f);
+		_pos = D3DXVECTOR3(0.f, 0.f, -20.f);
 		_look = D3DXVECTOR3(0.f, 0.f, 1.f);
 		_up = D3DXVECTOR3(0.f, 1.f, 0.f);
+		_first = false;
 	}
 
-	D3DXMATRIX V;
-	//D3DXMatrixLookAtLH(&V, &_pos, &_look, &_up);
-	getViewMatrix(&V);
-	_d3ddev->SetTransform(D3DTS_VIEW, &V);
+	// 鼠标位置
+	float x = _dxInput->MouseDX() * 0.0006f;
+	float y = _dxInput->MouseDY() * 0.0006f;
+	float z = _dxInput->MouseDZ() * 0.3f;
+	if (_dxInput->IsMouseButtonDown(0)) {
+		strafe(x);
+		walk(y);
+	}
+	fly(z);
+	pitch(z * -0.01f);
+	
 }
 
 void SnowMan3D::strafe(float units) {
@@ -277,6 +358,7 @@ void SnowMan3D::walk(float units) {
 void SnowMan3D::fly(float units) {
 	_pos.y += units;
 	if (_pos.y < 0.f) _pos.y = 0.f;
+	if (_pos.y > 20.f) _pos.y = 20.f;
 }
 
 void SnowMan3D::pitch(float angle) {
@@ -322,10 +404,10 @@ float SnowMan3D::getFPS() {
 	static float  fps = 0; //我们需要计算的FPS值  
 	static int    frameCount = 0;//帧数  
 	static float  currentTime = 0.0f;//当前时间  
-	static float  lastTime = clock() * 0.001f;  
+	static float  lastTime = ::timeGetTime() * 0.001f;  
 
 	frameCount++;  
-	currentTime = clock() * 0.001f;//获取系统时间，其中timeGetTime函数返回的是以毫秒为单位的系统时间
+	currentTime = ::timeGetTime() * 0.001f;//获取系统时间，其中timeGetTime函数返回的是以毫秒为单位的系统时间
 	//每秒计算一次帧数  
 	if (currentTime - lastTime > 1.0f) {
 		fps = (float)frameCount / (currentTime - lastTime);//计算这1秒钟的FPS值  

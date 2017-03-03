@@ -1,4 +1,4 @@
-// include the basic windows header files and the Direct3D header file
+﻿// include the basic windows header files and the Direct3D header file
 #include <windows.h>
 #include <windowsx.h>
 #include "SnowMan3D.h"
@@ -29,7 +29,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	hWnd = CreateWindowEx(NULL,
 		L"WindowClass",
-		L"SnowMan3D",
+		L"雪人3D",
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0,
 		CW_USEDEFAULT, 0,
@@ -42,7 +42,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	UpdateWindow(hWnd);
 
 	// set up and initialize Direct3D
-	SnowMan3D::instance()->InitD3D(hWnd);
+	SnowMan3D::instance()->InitD3D(hWnd, hInstance);
 
 	// enter the main loop:
 
